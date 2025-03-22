@@ -388,22 +388,28 @@ def submit_article():
         try:
             title = request.form.get('title')
             contents = request.form.get('contents')
-            author_name = request.form.get('author_name')
+            author_name = request.form.get('author_name', session['username'])  # Default to current user
             source_link = request.form.get('source_link', '')
             categories = request.form.getlist('categories')
             
-            if not all([title, contents, author_name]):
+            if not all([title, contents]):  # Only title and contents are required now
                 flash("Please fill in all required fields.")
                 return redirect(url_for('submit_article'))
 
+            # Get user ID before starting transaction
+            user_id = get_user_id(session['username'])
+            
             conn = get_connection()
             cur = conn.cursor()
+            
+            # Set timeout for database operations
+            cur.execute("PRAGMA busy_timeout = 5000")  # 5 second timeout
             
             # Insert article
             cur.execute("""
                 INSERT INTO articles (title, contents, author_name, source_link, submitter_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (title, contents, author_name, source_link, get_user_id(session['username'])))
+            """, (title, contents, author_name, source_link, user_id))
             
             article_id = cur.lastrowid
             
