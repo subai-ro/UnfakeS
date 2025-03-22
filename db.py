@@ -129,14 +129,31 @@ def get_top_3_users():
         conn.close()
 
 def get_low_credibility_articles():
+    """Get all articles marked as fake or with low credibility rating"""
     conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT * FROM v_low_credibility
+            SELECT 
+                article_id,
+                title,
+                contents,
+                author_name,
+                publication_date,
+                overall_rating,
+                is_fake,
+                submitter_id,
+                submitter_name,
+                ml_score,
+                source_link
+            FROM v_low_credibility
             ORDER BY publication_date DESC
         """)
-        return cur.fetchall()
+        articles = cur.fetchall()
+        return articles
+    except Exception as e:
+        print(f"Error getting low credibility articles: {e}")
+        return []
     finally:
         conn.close()
 

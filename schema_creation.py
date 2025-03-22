@@ -78,10 +78,19 @@ def create_schema():
         SELECT 
             a.article_id,
             a.title,
+            a.contents,
             a.author_name,
-            a.overall_rating
+            a.publication_date,
+            a.overall_rating,
+            a.is_fake,
+            a.submitter_id,
+            u.username as submitter_name,
+            a.ml_score,
+            a.source_link
         FROM articles a
-        WHERE a.is_fake = 1 AND a.overall_rating >= 3
+        LEFT JOIN users u ON a.submitter_id = u.user_id
+        WHERE a.is_fake = 1 OR a.overall_rating < 3
+        ORDER BY a.publication_date DESC
     """)
     
     # Insert default categories if they don't exist
