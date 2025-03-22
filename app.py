@@ -22,7 +22,19 @@ from db import (
 )
 
 app = Flask(__name__)
-app.secret_key = "super_secret_key"
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Make sure to set this in Render's environment variables
+
+# Configure for production
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'  # Use tmp directory in production
+else:
+    app.config['UPLOAD_FOLDER'] = 'static/uploads'
+
+# Ensure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 @app.route('/')
 def home():
