@@ -14,64 +14,60 @@ def create_schema():
     # Create tables
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            join_date DATE DEFAULT CURRENT_DATE,
+            profile_picture TEXT DEFAULT '',
+            bio TEXT DEFAULT ''
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS articles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            url TEXT UNIQUE,
-            author_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (author_id) REFERENCES users(id)
+            contents TEXT NOT NULL,
+            author_name TEXT NOT NULL,
+            publication_date DATE DEFAULT CURRENT_DATE,
+            submitter_id INTEGER,
+            source_link TEXT,
+            overall_rating REAL DEFAULT 0,
+            is_fake INTEGER DEFAULT 0,
+            ml_score REAL DEFAULT 0,
+            FOREIGN KEY (submitter_id) REFERENCES users(user_id)
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
+            category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_name TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT ''
         )
     """)
     
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS article_categories (
+        CREATE TABLE IF NOT EXISTS article_category (
             article_id INTEGER,
             category_id INTEGER,
             PRIMARY KEY (article_id, category_id),
-            FOREIGN KEY (article_id) REFERENCES articles(id),
-            FOREIGN KEY (category_id) REFERENCES categories(id)
+            FOREIGN KEY (article_id) REFERENCES articles(article_id),
+            FOREIGN KEY (category_id) REFERENCES categories(category_id)
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ratings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
             article_id INTEGER,
             user_id INTEGER,
-            rating INTEGER CHECK(rating >= 1 AND rating <= 5),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (article_id) REFERENCES articles(id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(article_id, user_id)
-        )
-    """)
-    
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS fake_marks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            article_id INTEGER,
-            user_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (article_id) REFERENCES articles(id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
+            rating_value INTEGER CHECK(rating_value >= 1 AND rating_value <= 5),
+            comment TEXT,
+            rating_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (article_id) REFERENCES articles(article_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
             UNIQUE(article_id, user_id)
         )
     """)
@@ -80,48 +76,43 @@ def create_schema():
     cur.execute("""
         CREATE VIEW IF NOT EXISTS v_low_credibility AS
         SELECT 
-            a.id,
+            a.article_id,
             a.title,
-            a.content,
-            a.url,
-            a.created_at,
-            COUNT(DISTINCT r.id) as rating_count,
-            AVG(r.rating) as avg_rating,
-            COUNT(DISTINCT f.id) as fake_mark_count
+            a.author_name,
+            a.overall_rating
         FROM articles a
-        LEFT JOIN ratings r ON a.id = r.article_id
-        LEFT JOIN fake_marks f ON a.id = f.article_id
-        GROUP BY a.id
-        HAVING 
-            (rating_count < 3 OR avg_rating < 3) 
-            OR fake_mark_count > 0
+        WHERE a.is_fake = 1 AND a.overall_rating >= 3
     """)
     
     # Insert default categories if they don't exist
     default_categories = [
-        "Politics",
-        "Science",
-        "Technology",
-        "Health",
-        "Business",
-        "Entertainment",
-        "Sports",
-        "Education",
-        "Environment",
-        "Other"
+        ("Politics", "Political news and updates"),
+        ("Science", "Scientific discoveries and research"),
+        ("Technology", "Tech news and innovations"),
+        ("Health", "Health and medical news"),
+        ("Business", "Business and economic news"),
+        ("Entertainment", "Entertainment and celebrity news"),
+        ("Sports", "Sports news and updates"),
+        ("Education", "Education and academic news"),
+        ("Environment", "Environmental news and climate updates"),
+        ("Other", "Other news categories")
     ]
     
-    for category in default_categories:
-        cur.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (category,))
+    for category_name, description in default_categories:
+        cur.execute("INSERT OR IGNORE INTO categories (category_name, description) VALUES (?, ?)", 
+                   (category_name, description))
+    
+    # Create admin user if it doesn't exist
+    cur.execute("INSERT OR IGNORE INTO users (username, password, email) VALUES (?, ?, ?)",
+                ('admin_user', 'admin123', 'admin@unfake.com'))
     
     # Commit changes and close connection
     conn.commit()
     conn.close()
     
-    print("All core tables + columns verified.")
-    print("v_low_credibility view created/updated.")
-    print("Duplicate categories removed.")
-    print("Schema creation/upgrade complete! Run app.py afterwards.")
+    print("Database schema created/updated successfully!")
+    print("Default categories and admin user have been set up.")
+    print("You can now run the application.")
 
 if __name__ == "__main__":
     create_schema()
