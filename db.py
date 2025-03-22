@@ -23,8 +23,10 @@ def get_connection():
     
     for attempt in range(max_retries):
         try:
-            conn = sqlite3.connect(db_path, timeout=10)
+            conn = sqlite3.connect(db_path, timeout=20)  # Increased timeout
             conn.row_factory = sqlite3.Row
+            # Enable WAL mode for better concurrency
+            conn.execute("PRAGMA journal_mode=WAL")
             return conn
         except sqlite3.OperationalError as e:
             if attempt < max_retries - 1:
@@ -295,5 +297,44 @@ def update_password(username, new_password):
     except Exception as e:
         print(f"Error updating password: {e}")
         return False
+    finally:
+        conn.close()
+
+def submit_article(title, contents, author_name, source_link, submitter_id, categories):
+    """
+    Submit a new article with categories in a single transaction.
+    Returns the article_id if successful, None if failed.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        
+        # Insert article
+        cur.execute("""
+            INSERT INTO articles (title, contents, author_name, source_link, submitter_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (title, contents, author_name, source_link, submitter_id))
+        
+        article_id = cur.lastrowid
+        
+        # Insert categories
+        for category_id in categories:
+            cur.execute("""
+                INSERT INTO article_category (article_id, category_id)
+                VALUES (?, ?)
+            """, (article_id, category_id))
+        
+        # Run ML analysis and update score
+        score = ml_analyze_article(contents, source_link)
+        cur.execute("""
+            UPDATE articles SET ml_score = ? WHERE article_id = ?
+        """, (score, article_id))
+        
+        conn.commit()
+        return article_id
+    except Exception as e:
+        conn.rollback()
+        print(f"Error submitting article: {e}")
+        return None
     finally:
         conn.close()

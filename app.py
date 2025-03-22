@@ -20,7 +20,8 @@ from db import (
     add_category,
     remove_category,
     remove_article,
-    update_password
+    update_password,
+    submit_article
 )
 
 app = Flask(__name__)
@@ -388,51 +389,40 @@ def submit_article():
         try:
             title = request.form.get('title')
             contents = request.form.get('contents')
-            author_name = request.form.get('author_name', session['username'])  # Default to current user
+            author_name = request.form.get('author_name', session['username'])
             source_link = request.form.get('source_link', '')
             categories = request.form.getlist('categories')
             
-            if not all([title, contents]):  # Only title and contents are required now
+            if not all([title, contents]):
                 flash("Please fill in all required fields.")
                 return redirect(url_for('submit_article'))
 
-            # Get user ID before starting transaction
+            # Get user ID
             user_id = get_user_id(session['username'])
-            
-            conn = get_connection()
-            cur = conn.cursor()
-            
-            # Set timeout for database operations
-            cur.execute("PRAGMA busy_timeout = 5000")  # 5 second timeout
-            
-            # Insert article
-            cur.execute("""
-                INSERT INTO articles (title, contents, author_name, source_link, submitter_id)
-                VALUES (?, ?, ?, ?, ?)
-            """, (title, contents, author_name, source_link, user_id))
-            
-            article_id = cur.lastrowid
-            
-            # Insert categories
-            for category_id in categories:
-                insert_article_category(article_id, category_id)
-            
-            # Run ML analysis
-            score = ml_analyze_article(contents, source_link)
-            update_ml_score(article_id, score)
-            
-            conn.commit()
-            flash(f"Article submitted successfully! ML Score: {score:.2f}")
-            return redirect(url_for('dashboard'))
-            
+            if not user_id:
+                flash("Error: User not found.")
+                return redirect(url_for('login'))
+
+            # Submit article using the new function
+            article_id = submit_article(
+                title=title,
+                contents=contents,
+                author_name=author_name,
+                source_link=source_link,
+                submitter_id=user_id,
+                categories=categories
+            )
+
+            if article_id:
+                flash("Article submitted successfully!")
+                return redirect(url_for('dashboard'))
+            else:
+                flash("Error submitting article. Please try again.")
+                return redirect(url_for('submit_article'))
+
         except Exception as e:
-            if 'conn' in locals():
-                conn.rollback()
             flash(f"Error submitting article: {str(e)}")
             return redirect(url_for('submit_article'))
-        finally:
-            if 'conn' in locals():
-                conn.close()
 
     categories = get_categories()
     return render_template('submit_article.html', categories=categories)
