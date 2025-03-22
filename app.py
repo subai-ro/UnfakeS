@@ -18,7 +18,8 @@ from db import (
     search_articles_db,
     add_category,
     remove_category,
-    remove_article
+    remove_article,
+    update_password
 )
 
 app = Flask(__name__)
@@ -397,6 +398,33 @@ def my_profile():
         return redirect(url_for('login'))
     uid = get_user_id(session['username'])
     return redirect(url_for('user_profile', user_id=uid))
+
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if 'username' not in session:
+        flash("Please login first!")
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        if not check_user_credentials(session['username'], current_password):
+            flash("Current password is incorrect!")
+            return redirect(url_for('change_password'))
+            
+        if new_password != confirm_password:
+            flash("New passwords do not match!")
+            return redirect(url_for('change_password'))
+            
+        if update_password(session['username'], new_password):
+            flash("Password updated successfully!")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Error updating password!")
+            
+    return render_template('change_password.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

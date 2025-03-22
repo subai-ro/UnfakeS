@@ -294,3 +294,16 @@ def remove_article(article_id):
     """, (article_id,))
     conn.commit()
     conn.close()
+
+def update_password(username, new_password):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET password = ? WHERE username = ?", (new_password, username))
+        conn.commit()
+        return True
+    except Exception as e:
+        print("Error updating password:", e)
+        return False
+    finally:
+        conn.close()
