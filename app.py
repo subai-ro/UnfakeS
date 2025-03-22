@@ -389,7 +389,7 @@ def submit_article():
             title = request.form.get('title')
             contents = request.form.get('contents')
             author_name = request.form.get('author_name')
-            source_link = request.form.get('source_link')
+            source_link = request.form.get('source_link', '')
             categories = request.form.getlist('categories')
             
             if not all([title, contents, author_name]):
@@ -408,11 +408,15 @@ def submit_article():
             article_id = cur.lastrowid
             
             # Insert categories
-            for category in categories:
-                insert_article_category(article_id, category)
+            for category_id in categories:
+                insert_article_category(article_id, category_id)
+            
+            # Run ML analysis
+            score = ml_analyze_article(contents, source_link)
+            update_ml_score(article_id, score)
             
             conn.commit()
-            flash("Article submitted successfully!")
+            flash(f"Article submitted successfully! ML Score: {score:.2f}")
             return redirect(url_for('dashboard'))
             
         except Exception as e:
