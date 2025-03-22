@@ -1,6 +1,7 @@
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import os
+from werkzeug.utils import secure_filename
 from db import (
     check_user_credentials,
     get_user_id,
@@ -30,12 +31,18 @@ if os.environ.get('FLASK_ENV') == 'production':
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
-    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'  # Use tmp directory in production
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 else:
-    app.config['UPLOAD_FOLDER'] = 'static/uploads'
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Configure allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def home():
@@ -207,24 +214,44 @@ def edit_profile(user_id):
     cur = conn.cursor()
 
     if request.method == 'POST':
-        new_bio = request.form.get('bio', '')
-        file = request.files.get('profile_pic')
-        pic_path = ''
-        if file and file.filename != '':
-            pic_path = f"static/uploads/user_{user_id}.jpg"
-            file.save(pic_path)
+        try:
+            new_bio = request.form.get('bio', '')
+            file = request.files.get('profile_pic')
+            pic_path = ''
+            
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    pic_path = os.path.join('static', 'uploads', f"user_{user_id}_{filename}")
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], f"user_{user_id}_{filename}"))
+                else:
+                    flash("Invalid file type. Allowed types: png, jpg, jpeg, gif")
+                    return redirect(url_for('edit_profile', user_id=user_id))
 
-        sql = "UPDATE users SET bio=?, profile_picture=? WHERE user_id=?"
-        cur.execute(sql, (new_bio, pic_path, user_id))
-        conn.commit()
+            sql = "UPDATE users SET bio=?, profile_picture=? WHERE user_id=?"
+            cur.execute(sql, (new_bio, pic_path, user_id))
+            conn.commit()
+            flash("Profile updated successfully.")
+            return redirect(url_for('user_profile', user_id=user_id))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error updating profile: {str(e)}")
+            return redirect(url_for('edit_profile', user_id=user_id))
+        finally:
+            conn.close()
+
+    try:
+        cur.execute("SELECT bio, profile_picture FROM users WHERE user_id=?", (user_id,))
+        row = cur.fetchone()
+        return render_template('edit_profile.html', 
+                             user_id=user_id, 
+                             existing_bio=row['bio'] if row else '', 
+                             existing_pic=row['profile_picture'] if row else '')
+    except Exception as e:
+        flash(f"Error loading profile: {str(e)}")
+        return redirect(url_for('dashboard'))
+    finally:
         conn.close()
-        flash("Profile updated.")
-        return redirect(url_for('user_profile', user_id=user_id))
-
-    cur.execute("SELECT bio, profile_picture FROM users WHERE user_id=?", (user_id,))
-    row = cur.fetchone()
-    conn.close()
-    return render_template('edit_profile.html', user_id=user_id, existing_bio=row['bio'], existing_pic=row['profile_picture'])
 
 @app.route('/admin', methods=['GET','POST'])
 def admin_panel():
@@ -351,44 +378,54 @@ def register():
             return redirect(url_for('register'))
     return render_template('register.html')
 
-@app.route('/submit_article', methods=['GET','POST'])
+@app.route('/submit_article', methods=['GET', 'POST'])
 def submit_article():
     if 'username' not in session:
         flash("Please log in first.")
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        title = request.form.get('title')
-        contents = request.form.get('contents')
-        author_name = request.form.get('author_name', session['username'])
-        submitter_id = get_user_id(session['username'])
-        category_id = request.form.get('category_id')
-        source_link = request.form.get('source_link', '')
+        try:
+            title = request.form.get('title')
+            contents = request.form.get('contents')
+            author_name = request.form.get('author_name')
+            source_link = request.form.get('source_link')
+            categories = request.form.getlist('categories')
+            
+            if not all([title, contents, author_name]):
+                flash("Please fill in all required fields.")
+                return redirect(url_for('submit_article'))
 
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO articles (title, contents, author_name, publication_date, 
-                                  submitter_id, source_link)
-            VALUES (?, ?, ?, DATE('now'), ?, ?)
-        """, (title, contents, author_name, submitter_id, source_link))
-        new_article_id = cur.lastrowid
-        conn.commit()
-        conn.close()
+            conn = get_connection()
+            cur = conn.cursor()
+            
+            # Insert article
+            cur.execute("""
+                INSERT INTO articles (title, contents, author_name, source_link, submitter_id)
+                VALUES (?, ?, ?, ?, ?)
+            """, (title, contents, author_name, source_link, get_user_id(session['username'])))
+            
+            article_id = cur.lastrowid
+            
+            # Insert categories
+            for category in categories:
+                insert_article_category(article_id, category)
+            
+            conn.commit()
+            flash("Article submitted successfully!")
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            if 'conn' in locals():
+                conn.rollback()
+            flash(f"Error submitting article: {str(e)}")
+            return redirect(url_for('submit_article'))
+        finally:
+            if 'conn' in locals():
+                conn.close()
 
-        if category_id:
-            insert_article_category(new_article_id, category_id)
-
-        # run ML analysis
-        from db import ml_analyze_article, update_ml_score
-        score = ml_analyze_article(contents, source_link)
-        update_ml_score(new_article_id, score)
-
-        flash(f"New article submitted! ML Score: {score}")
-        return redirect(url_for('dashboard'))
-
-    cats = get_categories()
-    return render_template('submit_article.html', categories=cats)
+    categories = get_categories()
+    return render_template('submit_article.html', categories=categories)
 
 # Add a route for the user to quickly jump to their own profile from the nav:
 @app.route('/my_profile')
