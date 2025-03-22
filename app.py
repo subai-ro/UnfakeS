@@ -21,7 +21,7 @@ from db import (
     remove_category,
     remove_article,
     update_password,
-    submit_article
+    create_article
 )
 
 app = Flask(__name__)
@@ -403,8 +403,8 @@ def submit_article():
                 flash("Error: User not found.")
                 return redirect(url_for('login'))
 
-            # Submit article using the new function
-            article_id = submit_article(
+            # Create article using the renamed function
+            article_id = create_article(
                 title=title,
                 contents=contents,
                 author_name=author_name,

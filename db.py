@@ -300,9 +300,9 @@ def update_password(username, new_password):
     finally:
         conn.close()
 
-def submit_article(title, contents, author_name, source_link, submitter_id, categories):
+def create_article(title, contents, author_name, source_link, submitter_id, categories):
     """
-    Submit a new article with categories in a single transaction.
+    Create a new article with categories in a single transaction.
     Returns the article_id if successful, None if failed.
     """
     conn = get_connection()
