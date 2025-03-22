@@ -1,0 +1,84 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h2>Welcome, {{ username }}!</h2>
+  <!-- Big "Submit New Article" button on top-right -->
+  <a href="{{ url_for('submit_article') }}" class="btn btn-info btn-lg">Submit New Article</a>
+</div>
+
+<hr>
+
+<h3>Articles</h3>
+<ul class="list-group">
+  {% for art in articles %}
+    <li class="list-group-item">
+      <strong>
+        <a href="{{ url_for('article_detail', article_id=art['article_id']) }}">
+          ID: {{ art['article_id'] }} - {{ art['title'] }}
+        </a>
+      </strong>
+      <br>
+      Category: 
+      {% if art['category_list'] %}
+        {{ art['category_list'] }}
+      {% else %}
+        <i>None</i>
+      {% endif %}
+      <br>
+
+      Submitted by:
+      {% if art['submitter_id'] %}
+        <a href="{{ url_for('user_profile', user_id=art['submitter_id']) }}">
+          {{ art['submitter_name'] }}
+        </a>
+      {% else %}
+        Unknown
+      {% endif %}
+      <br>
+
+      Rating: {{ art['overall_rating'] }}, Fake? {{ art['is_fake'] }}, ML Score: {{ art['ml_score'] }}
+      {% if art['source_link'] %}
+        <br>Source: 
+        <a href="{{ art['source_link'] }}" target="_blank">{{ art['source_link'] }}</a>
+      {% endif %}
+
+      <!-- Rate form -->
+      <form method="POST" action="{{ url_for('rate') }}" class="form-inline mt-2">
+        <input type="hidden" name="article_id" value="{{ art['article_id'] }}">
+        <label>Rate (1-5):</label>
+        <input type="number" name="rating_value" min="1" max="5" required class="form-control mx-2">
+        <input type="text" name="comment" placeholder="comment" class="form-control mx-2">
+        <button type="submit" class="btn btn-sm btn-success">Submit</button>
+      </form>
+
+      {% if session.username == 'admin_user' %}
+        <form method="POST" action="{{ url_for('admin_mark_fake') }}" style="display:inline;">
+          <input type="hidden" name="article_id" value="{{ art['article_id'] }}">
+          <button type="submit" class="btn btn-sm btn-danger">Mark Fake</button>
+        </form>
+      {% endif %}
+
+      <!-- Show comments for this article -->
+      {% set this_comments = comments_dict.get(art['article_id'], []) %}
+      {% if this_comments %}
+        <h5 class="mt-3">Comments</h5>
+        <ul>
+          {% for c in this_comments %}
+            <li>
+              <a href="{{ url_for('user_profile', user_id=c['user_id']) }}">
+                {{ c['username'] }}
+              </a>
+              rated {{ c['rating_value'] }}: "{{ c['comment'] }}"
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No comments yet.</p>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

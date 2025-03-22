@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Search Articles{% endblock %}
+
+{% block content %}
+<h1>Search / Filter Screen</h1>
+<form method="GET" class="form-inline" action="{{ url_for('search_articles') }}">
+  <div class="form-group mr-2">
+    <label>Category:</label>
+    <input type="text" name="category" class="form-control ml-2" placeholder="Economy, Politics...">
+  </div>
+  <div class="form-group mr-2">
+    <label>Min Rating:</label>
+    <input type="number" name="min_rating" min="0" max="5" class="form-control ml-2">
+  </div>
+  <div class="form-group mr-2">
+    <label>Date (YYYY-MM-DD):</label>
+    <input type="date" name="publication_date" class="form-control ml-2">
+  </div>
+  <div class="form-group mr-2">
+    <label>Username:</label>
+    <input type="text" name="username" class="form-control ml-2" placeholder="john_doe">
+  </div>
+  <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+<hr>
+
+{% if results and results|length > 0 %}
+  <h2>Search Results</h2>
+  <ul class="list-group">
+    {% for art in results %}
+    <li class="list-group-item">
+      <strong>
+        <a href="{{ url_for('article_detail', article_id=art['article_id']) }}">
+          {{ art['title'] }}
+        </a>
+      </strong>
+      <br>Category: {{ art['category_list'] if art['category_list'] else 'None' }}
+      <br>Rating: {{ art['overall_rating'] }}, ML: {{ art['ml_score'] }}, Fake? {{ art['is_fake'] }}
+      <br>Submitted by:
+      {% if art['submitter_id'] %}
+        <a href="{{ url_for('user_profile', user_id=art['submitter_id']) }}">
+          {{ art['submitter_name'] }}
+        </a>
+      {% else %}
+        Unknown
+      {% endif %}
+      {% if art['source_link'] %}
+        <br>Source: <a href="{{ art['source_link'] }}" target="_blank">{{ art['source_link'] }}</a>
+      {% endif %}
+      <br>Date: {{ art['publication_date'] }}
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No results found or no search performed yet.</p>
+{% endif %}
+{% endblock %}

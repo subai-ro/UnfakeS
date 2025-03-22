@@ -1,0 +1,22 @@
+<!-- templates/low_credibility.html -->
+{% extends "base.html" %}
+{% block title %}Low Credibility{% endblock %}
+
+{% block content %}
+<h1>Fake Articles with Low Rating</h1>
+{% if articles and articles|length > 0 %}
+  <ul class="list-group">
+    {% for art in articles %}
+      <li class="list-group-item">
+        <strong>{{ art['title'] }}</strong> 
+        - Author: {{ art['author_name'] }}
+        - Overall Rating: {{ art['overall_rating'] }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No low-credibility articles found.</p>
+{% endif %}
+
+<p class="mt-3"><a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a></p>
+{% endblock %}

@@ -1,0 +1,122 @@
+<!-- templates/admin.html -->
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<h1>Admin Panel</h1>
+<p>Welcome, Admin! Here you can manage articles, users, and categories.</p>
+<hr>
+
+<!-- Section: Manage Articles -->
+<h3>Manage Articles</h3>
+<form method="POST" class="mb-3">
+  <div class="row">
+    <div class="col-md-6">
+      <label>Mark Article as Real:</label>
+      <div class="input-group">
+        <select name="mark_real_id" class="form-control" required>
+          <option value="" disabled selected>Select Article to Mark as Real</option>
+          {% for a in articles %}
+            {% if a['is_fake'] %}
+              <option value="{{ a['article_id'] }}">{{ a['title'] }} (ID: {{ a['article_id'] }})</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <div class="input-group-append">
+          <button type="submit" class="btn btn-primary">Mark as Real</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Articles List with Remove Buttons -->
+<ul class="list-group mb-4">
+  {% for a in articles %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ a['title'] }}</strong> (ID: {{ a['article_id'] }}) 
+        [Fake? {{ a['is_fake'] }}]
+      </div>
+      <form method="POST" action="{{ url_for('admin_panel') }}" onsubmit="return confirm('Are you sure you want to delete this article?');">
+        <input type="hidden" name="remove_article_id" value="{{ a['article_id'] }}">
+        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+
+<!-- Section: Manage Users -->
+<h3>Manage Users</h3>
+<form method="POST" class="mb-3">
+  <label>Remove User (ID):</label>
+  <div class="input-group">
+    <select name="remove_user_id" class="form-control" required>
+      <option value="" disabled selected>Select User to Remove</option>
+      {% for u in users %}
+        <option value="{{ u['user_id'] }}">{{ u['username'] }} (ID: {{ u['user_id'] }})</option>
+      {% endfor %}
+    </select>
+    <div class="input-group-append">
+      <button type="submit" class="btn btn-danger">Remove User</button>
+    </div>
+  </div>
+</form>
+
+<ul class="list-group mb-4">
+  {% for u in users %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        {{ u['username'] }} (ID: {{ u['user_id'] }})
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+
+<!-- Section: Manage Categories -->
+<h3>Manage Categories</h3>
+
+<!-- Add Category Form -->
+<form method="POST" class="mb-4">
+  <div class="form-row">
+    <div class="col-md-6 mb-3">
+      <label>Add Category:</label>
+      <input type="text" name="new_category" class="form-control" placeholder="Category name" required>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label>Category Description (optional):</label>
+      <input type="text" name="new_category_description" class="form-control" placeholder="Description">
+    </div>
+  </div>
+  <button type="submit" class="btn btn-success">Add Category</button>
+</form>
+
+<!-- Remove Category Form -->
+<form method="POST" class="mb-3">
+  <label>Remove Category:</label>
+  <div class="input-group">
+    <select name="remove_category_id" class="form-control" required>
+      <option value="" disabled selected>Select Category to Remove</option>
+      {% for c in categories %}
+        <option value="{{ c['category_id'] }}">{{ c['category_name'] }}</option>
+      {% endfor %}
+    </select>
+    <div class="input-group-append">
+      <button type="submit" class="btn btn-danger">Remove Category</button>
+    </div>
+  </div>
+</form>
+
+<!-- List of Categories -->
+<ul class="list-group">
+  {% for c in categories %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        {{ c['category_name'] }} (ID: {{ c['category_id'] }})
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+
+<a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-4">Back to Dashboard</a>
+{% endblock %}

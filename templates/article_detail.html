@@ -1,0 +1,47 @@
+<!-- templates/article_detail.html -->
+{% extends "base.html" %}
+{% block title %}{{ article.title if article else "Article Not Found" }}{% endblock %}
+
+{% block content %}
+{% if article %}
+  <h1>{{ article.title }}</h1>
+  <p>By <strong>{{ article.author_name }}</strong> 
+     on {{ article.publication_date }} 
+     | Rating: {{ article.overall_rating }} 
+     | Fake? {{ article.is_fake }}</p>
+  <hr>
+
+  <h4>Article Text</h4>
+  <p>{{ article.contents }}</p>
+  <hr>
+
+  <h5>Categories</h5>
+  <ul>
+    {% for c in categories %}
+      <li>{{ c }}</li>
+    {% endfor %}
+  </ul>
+  <hr>
+
+  <h5>User Comments / Ratings</h5>
+  <ul class="list-group">
+    {% for r in ratings_list %}
+      <li class="list-group-item">
+        <strong>{{ r['username'] }}</strong> rated {{ r['rating_value'] }} on {{ r['rating_date'] }}:
+        <p>{{ r['comment'] }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Article not found.</p>
+{% endif %}
+
+  <p>ML Score: {{ article.ml_score }}</p>
+  {% if article.source_link %}
+    <p>Source: 
+      <a href="{{ article.source_link }}" target="_blank">{{ article.source_link }}</a>
+    </p>
+  {% endif %}
+
+<a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+{% endblock %}

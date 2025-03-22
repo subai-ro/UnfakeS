@@ -1,0 +1,23 @@
+<!-- templates/top_raters.html -->
+{% extends "base.html" %}
+{% block title %}Top Raters{% endblock %}
+
+{% block content %}
+<h1>Top 3 Users by Ratings</h1>
+
+{% if top3 and top3|length > 0 %}
+  <ul class="list-group">
+    {% for user_row in top3 %}
+      <li class="list-group-item">
+        <strong>{{ user_row['username'] }}</strong>: {{ user_row['total_ratings'] }} ratings
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No rating data found.</p>
+{% endif %}
+
+<p class="mt-3">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</p>
+{% endblock %}

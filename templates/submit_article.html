@@ -1,0 +1,39 @@
+<!-- templates/submit_article.html -->
+{% extends "base.html" %}
+{% block title %}Submit Article{% endblock %}
+
+{% block content %}
+<h2>Submit a New Article</h2>
+<form method="POST" class="form-group mt-3">
+  <div class="form-group">
+    <label>Title:</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
+  <div class="form-group">
+    <label>Contents:</label>
+    <textarea name="contents" class="form-control" required></textarea>
+  </div>
+  <div class="form-group">
+    <label>Author Name (optional):</label>
+    <input type="text" name="author_name" class="form-control" placeholder="Defaults to your username">
+  </div>
+
+  <div class="form-group">
+    <label>Choose Category:</label>
+    <select name="category_id" class="form-control">
+      <option value="">(None)</option>
+      {% for cat in categories %}
+        <option value="{{ cat['category_id'] }}">{{ cat['category_name'] }}</option>
+      {% endfor %}
+    </select>
+    <small class="form-text text-muted">Optional. You can add new categories in admin panel.</small>
+  </div>
+
+  <div class="form-group">
+    <label>Link to External Source (optional):</label>
+    <input type="url" name="source_link" class="form-control" placeholder="https://some-news-site.com/article">
+  </div>
+
+  <button type="submit" class="btn btn-primary">Submit Article</button>
+</form>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<h1>User Profile</h1>
+{% if user %}
+  <p><strong>Username:</strong> {{ user['username'] }}</p>
+  <p><strong>Email:</strong> {{ user['email'] }}</p>
+  <p><strong>Joined:</strong> {{ user['join_date'] }}</p>
+  <p><strong>Bio:</strong> {{ user['bio'] }}</p>
+
+  {% if user['profile_picture'] %}
+    <img src="/{{ user['profile_picture'] }}" alt="Profile Picture" width="150">
+  {% else %}
+    <p>No profile picture.</p>
+  {% endif %}
+
+  <!-- If the logged-in user or admin, show Edit button -->
+  {% if session.username == user['username'] or session.username == 'admin_user' %}
+    <p>
+      <a href="{{ url_for('edit_profile', user_id=user_id) }}" class="btn btn-primary">
+        Edit Profile
+      </a>
+    </p>
+  {% endif %}
+
+  <hr>
+  <h2>Articles Rated or Commented On:</h2>
+  <ul class="list-group">
+    {% for art in rated_articles %}
+    <li class="list-group-item">
+      <strong>
+        <a href="{{ url_for('article_detail', article_id=art['article_id']) }}">
+          {{ art['title'] }}
+        </a>
+      </strong>
+       - Rated {{ art['rating_value'] }} on {{ art['rating_date'] }}
+      <br>
+      Comment: {{ art['comment'] }}
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>User not found.</p>
+{% endif %}
+{% endblock %}
